@@ -133,6 +133,19 @@ EOF
 echo "psql postgresql://${DB_USER}:${DB_PASSWORD}@localhost:${DB_PORT}/${DB_NAME}" > db_connection.txt
 echo "Connection string saved to db_connection.txt"
 
+# Ensure extensions required by schema/seed exist (citext for case-insensitive email; pgcrypto for UUID/hash helpers)
+# Run as the application DB user, after db_connection.txt is written.
+$(cat db_connection.txt) -v ON_ERROR_STOP=1 -c "CREATE EXTENSION IF NOT EXISTS citext;"
+$(cat db_connection.txt) -v ON_ERROR_STOP=1 -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
+
+# Seed initial data (idempotent)
+if [ -f "seed.sh" ]; then
+    echo "Running seed script..."
+    bash seed.sh
+else
+    echo "No seed.sh found; skipping seed."
+fi
+
 # Save environment variables to a file
 cat > db_visualizer/postgres.env << EOF
 export POSTGRES_URL="postgresql://localhost:${DB_PORT}/${DB_NAME}"
